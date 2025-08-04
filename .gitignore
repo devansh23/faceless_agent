@@ -1,0 +1,57 @@
+# Environment variables
+.env
+
+# Google service account credentials
+service_account.json
+
+# WhatsApp session data
+whatsapp_session/
+whatsapp_state.json
+
+# Downloaded content
+images/
+audio/
+.whatsapp_downloads/
+
+# Test files
+test_download.mp3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp 
