@@ -8,7 +8,10 @@ Building an automated system to generate images via WhatsApp Web using ChatGPT b
 🎵 **AUDIO DOWNLOAD**: Enhanced audio download agent with 100% success rate  
 🌐 **DREAMINA AUTOMATION**: Complete end-to-end automation with error handling  
 🔒 **VPN INTEGRATION**: Persistent browser sessions with VPN support  
-🎯 **STATUS DETECTION**: Accurate error and success detection for Dreamina uploads
+🎯 **STATUS DETECTION**: Accurate error and success detection for Dreamina uploads  
+🚀 **N8N API INTEGRATION**: Complete API wrapper with queue system for n8n workflows  
+⚡ **CONCURRENT REQUEST HANDLING**: Queue-based system prevents browser conflicts  
+🎵 **AUDIO DOWNLOAD API**: NEW - Complete API for downloading audio files by reel number
 
 ## Technical Architecture
 
@@ -52,6 +55,29 @@ Building an automated system to generate images via WhatsApp Web using ChatGPT b
    - **NEW**: Success detection for video generation
    - **NEW**: Retry logic with proper error handling
 
+7. **N8N API Integration** (`simple_http_server.py`) - **NEW**
+   - Flask-based REST API for n8n integration
+   - Queue system for handling concurrent requests
+   - Subprocess-based execution to avoid Playwright threading issues
+   - **NEW**: Sequential processing prevents browser conflicts
+   - **NEW**: Real-time queue monitoring and status tracking
+   - **NEW**: Comprehensive error handling and timeout management
+
+8. **Standalone Image Generation** (`generate_single_image_simple.py`) - **NEW**
+   - Single image generation script for API calls
+   - Proper message counting to ensure only new images are downloaded
+   - **NEW**: Corrected logic to track messages before/after prompts
+   - **NEW**: Prevents downloading pre-existing images
+
+9. **Audio Download API** (`audio_download_api_server.py`) - **NEW**
+   - Flask-based REST API for audio download automation
+   - Downloads audio files by reel number from Google Sheets
+   - Organizes files in: `/Users/devanshc/Desktop/ProteinPapaPanda/{reel_number}/Audio/{audio_number}.mp3`
+   - **NEW**: Google Drive URL handling with automatic file ID extraction
+   - **NEW**: Sequential audio numbering (1.mp3, 2.mp3, etc.)
+   - **NEW**: Queue system for concurrent request handling
+   - **NEW**: 10-minute timeout with comprehensive error handling
+
 ## Key Technical Decisions
 
 ### 1. WhatsApp Web vs Direct API
@@ -83,12 +109,26 @@ Building an automated system to generate images via WhatsApp Web using ChatGPT b
 - **Status Detection**: Wait 15 seconds, then check for specific error elements
 - **Error Handling**: Detect "too many people" errors and handle gracefully
 
-### 6. Error Handling Strategy
+### 6. N8N Integration Strategy - **NEW**
+- **Chosen**: Flask API wrapper with subprocess execution
+- **Reason**: Avoid Playwright threading issues in Flask context
+- **Method**: Queue system for sequential processing
+- **Benefits**: No browser conflicts, proper error handling, real-time monitoring
+
+### 7. Audio Download API Strategy - **NEW**
+- **Chosen**: Flask API with subprocess execution for audio downloads
+- **Reason**: Separate concerns and avoid conflicts with image generation
+- **Method**: Queue system for sequential processing
+- **Benefits**: Organized file structure, Google Drive integration, error handling
+
+### 8. Error Handling Strategy
 - **Retry Logic**: 3 attempts for sending prompts
 - **Error Detection**: Identifies ChatGPT generation errors
 - **Graceful Degradation**: Continue processing even if some steps fail
 - **Browser Control**: Manual browser control with clear instructions
 - **NEW**: Dreamina-specific error detection and handling
+- **NEW**: API-level error handling with proper HTTP status codes
+- **NEW**: Audio download error handling with detailed diagnostics
 
 ## Implementation Details
 
@@ -132,6 +172,34 @@ error_element = page.wait_for_selector('.error-tips-text-xJxpf1', timeout=2000)
 if error_element:
     error_text = error_element.evaluate('el => el.textContent')
     return 'error'  # e.g., "A lot of people are applying lip sync right now"
+```
+
+### N8N API Queue System - **NEW**
+```python
+# Queue-based request processing
+request_queue = queue.Queue()
+processing_lock = threading.Lock()
+
+def process_queue():
+    while True:
+        request_data = request_queue.get(timeout=1)
+        # Process request sequentially
+        result = subprocess.run([sys.executable, script_path, ...])
+        request_data['completed'] = True
+```
+
+### Audio Download API Queue System - **NEW**
+```python
+# Audio download queue system
+request_queue = queue.Queue()
+processing_lock = threading.Lock()
+
+def process_audio_queue():
+    while True:
+        request_data = request_queue.get(timeout=1)
+        # Process audio download sequentially
+        result = subprocess.run([sys.executable, 'download_reel_audio.py', reel_number])
+        request_data['completed'] = True
 ```
 
 ## Challenges Encountered & Solutions
@@ -190,6 +258,27 @@ if error_element:
 - **Solution**: Wait 15 seconds, then check specific error elements
 - **Method**: Look for `.error-tips-text-xJxpf1` class for errors
 
+### 12. N8N Integration Threading Issues (SOLVED) - **NEW**
+- **Problem**: Playwright threading conflicts in Flask API
+- **Solution**: Subprocess-based execution with queue system
+- **Method**: Separate process for each image generation request
+
+### 13. Concurrent Request Conflicts (SOLVED) - **NEW**
+- **Problem**: Multiple n8n requests causing browser session conflicts
+- **Solution**: Queue system with sequential processing
+- **Method**: Background thread processes requests one at a time
+
+### 14. Docker Network Access (SOLVED) - **NEW**
+- **Problem**: n8n Docker container can't access host API
+- **Solution**: Use `host.docker.internal` or local network IP
+- **Method**: Multiple URL options for different Docker configurations
+
+### 15. Audio Download API Integration (SOLVED) - **NEW**
+- **Problem**: Need separate API for audio downloads by reel number
+- **Solution**: Created dedicated audio download API with queue system
+- **Method**: Flask API on port 5002 with subprocess execution
+- **Benefits**: Organized file structure, Google Drive integration, error handling
+
 ## Current Workflow
 
 1. **Setup**: Load Google Sheet data, open WhatsApp Web
@@ -204,6 +293,9 @@ if error_element:
 10. **Dreamina Upload**: **NEW** - Upload image-audio pairs to Dreamina
 11. **Status Check**: **NEW** - Wait 15 seconds and check for errors/success
 12. **Error Handling**: **NEW** - Handle "too many people" errors gracefully
+13. **N8N Integration**: **NEW** - API endpoint for workflow automation
+14. **Queue Processing**: **NEW** - Sequential handling of concurrent requests
+15. **Audio Download API**: **NEW** - Separate API for audio downloads by reel
 
 ## Test Results
 
@@ -234,6 +326,29 @@ if error_element:
 - ✅ Error detection working: "A lot of people are applying lip sync right now"
 - ✅ Status checking with specific element detection working
 - ✅ Complete end-to-end automation achieved
+
+### N8N API Integration Test (NEW - SUCCESS)
+- ✅ Flask API server running on port 5001
+- ✅ Queue system handling concurrent requests
+- ✅ Sequential processing preventing browser conflicts
+- ✅ Health endpoint with queue monitoring
+- ✅ Single image generation working via API
+- ✅ Proper error handling and timeout management
+- ✅ Docker integration working with `host.docker.internal`
+- ✅ Real-time queue status tracking
+
+### Audio Download API Test (NEW - SUCCESS)
+- ✅ Flask API server running on port 5002
+- ✅ Queue system handling concurrent audio download requests
+- ✅ Sequential processing preventing conflicts
+- ✅ Health endpoint with queue monitoring
+- ✅ Audio download by reel number working via API
+- ✅ Google Drive URL handling with automatic file ID extraction
+- ✅ Organized file structure: `/Users/devanshc/Desktop/ProteinPapaPanda/{reel_number}/Audio/{audio_number}.mp3`
+- ✅ 100% success rate (4/4 files downloaded successfully)
+- ✅ Proper error handling and timeout management
+- ✅ Docker integration working with `host.docker.internal`
+- ✅ Real-time queue status tracking
 
 ## Major Improvements Made
 
@@ -267,6 +382,23 @@ if error_element:
 - **After**: Complete automated upload with error handling
 - **Result**: End-to-end automation from WhatsApp to Dreamina
 
+### 7. N8N API Integration - **NEW**
+- **Before**: No API for workflow integration
+- **After**: Complete REST API with queue system
+- **Result**: Seamless integration with n8n workflows
+
+### 8. Concurrent Request Handling - **NEW**
+- **Before**: Browser conflicts with multiple requests
+- **After**: Queue system with sequential processing
+- **Result**: Reliable handling of concurrent n8n requests
+
+### 9. Audio Download API - **NEW**
+- **Before**: Manual audio download process
+- **After**: Complete API for automated audio downloads by reel
+- **Result**: Organized file structure with sequential numbering
+- **Result**: Google Drive integration with automatic file ID extraction
+- **Result**: Queue system for concurrent request handling
+
 ## Next Steps
 
 ### Immediate Improvements Needed
@@ -276,6 +408,8 @@ if error_element:
 4. ✅ **Audio Download**: SOLVED - Enhanced Google Drive audio download with 100% success rate
 5. ✅ **VPN Integration**: SOLVED - Persistent VPN browser sessions
 6. ✅ **Dreamina Automation**: SOLVED - Complete end-to-end automation
+7. ✅ **N8N Integration**: SOLVED - API with queue system for workflow automation
+8. ✅ **Audio Download API**: SOLVED - Complete API for audio downloads by reel
 
 ### Future Enhancements
 1. **Batch Dreamina Upload**: Add automated batch upload to Dreamina
@@ -286,6 +420,10 @@ if error_element:
 6. **Audio Processing**: Add audio file validation and format conversion
 7. **Video Download**: Add automated video download from Dreamina
 8. **Integration**: Connect all components in main orchestration script
+9. **API Authentication**: Add authentication to the API endpoints
+10. **Load Balancing**: Implement multiple API instances for high throughput
+11. **Audio Format Support**: Add support for WAV, M4A, etc.
+12. **Progress Callbacks**: Real-time progress updates for audio downloads
 
 ## File Structure
 ```
@@ -295,12 +433,22 @@ n8n_faceless_agent/
 ├── audio_download_agent.py             # Enhanced audio download agent (ENHANCED)
 ├── vpn_browser_agent.py                # VPN browser management (NEW)
 ├── dreamina_upload_agent_enhanced.py   # Dreamina automation (NEW)
+├── simple_http_server.py               # N8N API integration (NEW)
+├── generate_single_image_simple.py     # Standalone image generation (NEW)
+├── download_reel_audio.py              # Audio download by reel (NEW)
+├── audio_download_api_server.py        # Audio download API (NEW)
+├── start_audio_server.py               # Audio server startup (NEW)
+├── clear_browser_sessions.py           # Browser cleanup utility (NEW)
+├── run_cleanup.py                      # Cleanup execution script (NEW)
+├── start_server.py                     # Server startup script (NEW)
+├── check_ip.py                         # IP address checker (NEW)
 ├── test_complete_upload.py             # Complete upload test (NEW)
 ├── test_final_status_check.py          # Status checking test (NEW)
 ├── open_browser_for_vpn_setup_chrome.py # VPN setup helper (NEW)
 ├── test_single_download.py             # Test script for single file downloads
 ├── main.py                             # Orchestration (currently disabled)
 ├── requirements.txt                    # Dependencies
+├── api_requirements.txt                # API-specific dependencies (NEW)
 ├── .env                                # Environment variables
 ├── whatsapp_session/                   # Persistent WhatsApp session
 ├── vpn_browser_session/                # Persistent VPN browser session (NEW)
@@ -319,6 +467,8 @@ n8n_faceless_agent/
 - `oauth2client`: Google authentication
 - `python-dotenv`: Environment variables
 - `requests`: HTTP requests for audio downloads
+- `flask`: API server framework (NEW)
+- `queue`: Threading and queue management (NEW)
 
 ## Environment Variables Needed
 ```
@@ -333,7 +483,7 @@ VPN_SERVICE_NAME=<vpn_service_name>
 ## Usage
 ```bash
 # Install dependencies
-pip install playwright gspread oauth2client python-dotenv requests
+pip install playwright gspread oauth2client python-dotenv requests flask
 playwright install
 
 # Run WhatsApp image generation automation
@@ -345,12 +495,55 @@ python3 audio_download_agent.py
 # Run Dreamina upload automation
 python3 dreamina_upload_agent_enhanced.py
 
+# Start N8N API server
+python3 simple_http_server.py
+
+# Start Audio Download API server
+python3 start_audio_server.py
+
+# Clean up browser sessions
+python3 run_cleanup.py
+
 # Test complete end-to-end process
 python3 test_final_status_check.py
 
 # Test single file download
 python3 test_single_download.py
 ```
+
+## N8N Integration Guide
+
+### Image Generation API Endpoints
+- **Health Check**: `GET http://host.docker.internal:5001/health`
+- **Generate Images**: `POST http://host.docker.internal:5001/generate-reel-images`
+
+### Audio Download API Endpoints
+- **Health Check**: `GET http://host.docker.internal:5002/health`
+- **Download Audio**: `POST http://host.docker.internal:5002/download-reel-audio`
+
+### Request Format
+```json
+{
+  "reel_number": "{{ $json.reel_number }}"
+}
+```
+
+### Response Format
+```json
+{
+  "success": true,
+  "reel_number": "1",
+  "message": "SUCCESS: Downloaded 4 audio files for reel 1",
+  "details": "Audio files downloaded and saved to organized folder structure",
+  "audio_directory": "/Users/devanshc/Desktop/ProteinPapaPanda/1/Audio"
+}
+```
+
+### Queue System Features
+- **Sequential Processing**: Requests processed one at a time
+- **Queue Monitoring**: Real-time queue size and processing status
+- **Timeout Handling**: 10-minute total timeout per request
+- **Error Recovery**: Proper error handling and reporting
 
 ## Notes for New Cursor Sessions
 - The script requires a valid Google service account JSON file
@@ -365,4 +558,9 @@ python3 test_single_download.py
 - **NEW**: 10-minute fixed wait ensures all images are generated before downloading
 - **NEW**: VPN integration provides secure automation with persistent sessions
 - **NEW**: Dreamina automation provides complete end-to-end workflow
-- **NEW**: Status detection accurately identifies errors and success states 
+- **NEW**: Status detection accurately identifies errors and success states
+- **NEW**: N8N API integration enables workflow automation with queue system
+- **NEW**: Concurrent request handling prevents browser conflicts
+- **NEW**: Docker integration supports n8n containerized environments
+- **NEW**: Audio Download API provides organized file structure with sequential numbering
+- **NEW**: Google Drive integration with automatic file ID extraction for audio downloads 

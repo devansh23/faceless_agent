@@ -32,4 +32,33 @@ def get_sheet_data():
                 "reel_no": reel_no
             })
 
-    return result 
+    return result
+
+def get_prompts_by_reel(reel_number):
+    """Get all image prompts for a specific reel number"""
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds_path = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
+    sheet_id = os.getenv("GOOGLE_SHEET_ID")
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(creds_path, scope)
+    client = gspread.authorize(creds)
+
+    # Open the second worksheet (index 1)
+    sheet = client.open_by_key(sheet_id).get_worksheet(1)
+    data = sheet.get_all_records()
+
+    prompts = []
+    for idx, row in enumerate(data, start=1):
+        prompt = row.get("Image Prompt", "").strip()
+        audio_link = row.get("Audio File", "").strip()
+        reel_no = str(row.get("Reel #", "")).strip()
+
+        if prompt and reel_no == str(reel_number):
+            prompts.append({
+                "line_no": str(idx).zfill(3),
+                "prompt": prompt,
+                "audio_url": audio_link,  # Include audio URL
+                "image_number": len(prompts) + 1  # Sequential image number starting from 1
+            })
+
+    return prompts 
