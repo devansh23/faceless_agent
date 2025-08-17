@@ -12,6 +12,7 @@ Building an automated system to generate images via WhatsApp Web using ChatGPT b
 🚀 **N8N API INTEGRATION**: Complete API wrapper with queue system for n8n workflows  
 ⚡ **CONCURRENT REQUEST HANDLING**: Queue-based system prevents browser conflicts  
 🎵 **AUDIO DOWNLOAD API**: NEW - Complete API for downloading audio files by reel number
+🖼️ **IMAGE API (5003)**: NEW - Flask API for WhatsApp ChatGPT image batch generation
 
 ## Technical Architecture
 
@@ -337,6 +338,16 @@ def process_audio_queue():
 - ✅ Docker integration working with `host.docker.internal`
 - ✅ Real-time queue status tracking
 
+### Image Generation API (5003) Test (NEW - IN PROGRESS)
+- ✅ Server running at `http://localhost:5003`
+- ✅ Endpoint: `POST /batch-generate-images`
+- ✅ Strategy updates:
+  - Continuous capture during wait (initial attempt)
+  - Bottom-up retrieval with scrolling after 10-minute wait (current)
+- 🔎 Log findings: stale blob src caused missed downloads when not clicking the image
+- ✅ Fix: download from the image element viewer immediately to avoid stale blobs
+- ⏳ Status: recent run downloaded 6 images; increasing scroll depth and pacing to improve coverage
+
 ### Audio Download API Test (NEW - SUCCESS)
 - ✅ Flask API server running on port 5002
 - ✅ Queue system handling concurrent audio download requests
@@ -402,7 +413,7 @@ def process_audio_queue():
 ## Next Steps
 
 ### Immediate Improvements Needed
-1. ✅ **Download Reliability**: SOLVED - 100% success rate achieved
+1. 🔁 **Download Reliability (5003)**: Improve coverage for large batches by increasing scroll depth and pacing; add configurable `max_scrolls`/`scroll_step`
 2. ✅ **Browser Control**: SOLVED - Manual control implemented
 3. ✅ **Image Detection**: SOLVED - Smart detection with error handling
 4. ✅ **Audio Download**: SOLVED - Enhanced Google Drive audio download with 100% success rate
@@ -416,6 +427,7 @@ def process_audio_queue():
 2. **Error Recovery**: Add ability to resume from failures
 3. **Monitoring**: Add progress tracking and notifications
 4. **Configurable Wait Time**: Make 10-minute wait configurable
+5. **Scroll Tuning**: Expose scroll parameters via API (e.g., `max_scrolls`, `scroll_delay_ms`)
 5. **Batch Size Optimization**: Test with larger batch sizes
 6. **Audio Processing**: Add audio file validation and format conversion
 7. **Video Download**: Add automated video download from Dreamina
@@ -501,6 +513,9 @@ python3 simple_http_server.py
 # Start Audio Download API server
 python3 start_audio_server.py
 
+# Start ChatGPT Image API (port 5003)
+python3 chatgpt_image_api_server.py
+
 # Clean up browser sessions
 python3 run_cleanup.py
 
@@ -514,8 +529,12 @@ python3 test_single_download.py
 ## N8N Integration Guide
 
 ### Image Generation API Endpoints
-- **Health Check**: `GET http://host.docker.internal:5001/health`
-- **Generate Images**: `POST http://host.docker.internal:5001/generate-reel-images`
+- (5001) Legacy WhatsApp API
+  - **Health Check**: `GET http://host.docker.internal:5001/health`
+  - **Generate Images**: `POST http://host.docker.internal:5001/generate-reel-images`
+- (5003) ChatGPT Image API (NEW)
+  - **Health Check**: `GET http://host.docker.internal:5003/health`
+  - **Batch Generate Images**: `POST http://host.docker.internal:5003/batch-generate-images`
 
 ### Audio Download API Endpoints
 - **Health Check**: `GET http://host.docker.internal:5002/health`
